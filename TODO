@@ -1,0 +1,4 @@
+* change walk/run speed according to weapon type.
+* Disable weapons when running.
+* Adjust damages per hit box.
+* Review missing movements.
