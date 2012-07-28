@@ -2,3 +2,4 @@
 * Disable weapons when running.
 * Adjust damages per hit box.
 * Review missing movements.
+* Recover HP automatically after some time
