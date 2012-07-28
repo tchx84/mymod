@@ -25,8 +25,9 @@ include(CheckFunctionExists)
 include(GNUInstallDirs OPTIONAL RESULT_VARIABLE GNUINSTALLDIRS)
 
 option(CORE			"Build the core" ON)
-option(BASE			"Build the base game code" ON)
-option(D3XP			"Build the d3xp game code" ON)
+option(BASE			"Build the base game code" OFF)
+option(D3XP			"Build the d3xp game code" OFF)
+option(MYMOD		"Build the mymod game code" ON)
 option(DEDICATED	"Build the dedicated server" OFF)
 option(ONATIVE		"Optimize for the host CPU" OFF)
 option(SDL2			"Use SDL2 instead of SDL1.2" OFF)
@@ -649,6 +650,78 @@ set(src_d3xp
 	d3xp/physics/Force_Grab.cpp
 )
 
+set(src_mymod
+	mymod/AF.cpp
+	mymod/AFEntity.cpp
+	mymod/Actor.cpp
+	mymod/Camera.cpp
+	mymod/Entity.cpp
+	mymod/BrittleFracture.cpp
+	mymod/Fx.cpp
+	mymod/GameEdit.cpp
+	mymod/Game_local.cpp
+	mymod/Game_network.cpp
+	mymod/Item.cpp
+	mymod/IK.cpp
+	mymod/Light.cpp
+	mymod/Misc.cpp
+	mymod/Mover.cpp
+	mymod/Moveable.cpp
+	mymod/MultiplayerGame.cpp
+	mymod/Player.cpp
+	mymod/PlayerIcon.cpp
+	mymod/PlayerView.cpp
+	mymod/Projectile.cpp
+	mymod/Pvs.cpp
+	mymod/SecurityCamera.cpp
+	mymod/SmokeParticles.cpp
+	mymod/Sound.cpp
+	mymod/Target.cpp
+	mymod/Trigger.cpp
+	mymod/Weapon.cpp
+	mymod/WorldSpawn.cpp
+	mymod/ai/AAS.cpp
+	mymod/ai/AAS_debug.cpp
+	mymod/ai/AAS_pathing.cpp
+	mymod/ai/AAS_routing.cpp
+	mymod/ai/AI.cpp
+	mymod/ai/AI_events.cpp
+	mymod/ai/AI_pathing.cpp
+	mymod/ai/AI_Vagary.cpp
+	mymod/gamesys/DebugGraph.cpp
+	mymod/gamesys/Class.cpp
+	mymod/gamesys/Event.cpp
+	mymod/gamesys/SaveGame.cpp
+	mymod/gamesys/SysCmds.cpp
+	mymod/gamesys/SysCvar.cpp
+	mymod/gamesys/TypeInfo.cpp
+	mymod/anim/Anim.cpp
+	mymod/anim/Anim_Blend.cpp
+	mymod/anim/Anim_Import.cpp
+	mymod/anim/Anim_Testmodel.cpp
+	mymod/script/Script_Compiler.cpp
+	mymod/script/Script_Interpreter.cpp
+	mymod/script/Script_Program.cpp
+	mymod/script/Script_Thread.cpp
+	mymod/physics/Clip.cpp
+	mymod/physics/Force.cpp
+	mymod/physics/Force_Constant.cpp
+	mymod/physics/Force_Drag.cpp
+	mymod/physics/Force_Field.cpp
+	mymod/physics/Force_Spring.cpp
+	mymod/physics/Physics.cpp
+	mymod/physics/Physics_AF.cpp
+	mymod/physics/Physics_Actor.cpp
+	mymod/physics/Physics_Base.cpp
+	mymod/physics/Physics_Monster.cpp
+	mymod/physics/Physics_Parametric.cpp
+	mymod/physics/Physics_Player.cpp
+	mymod/physics/Physics_RigidBody.cpp
+	mymod/physics/Physics_Static.cpp
+	mymod/physics/Physics_StaticMulti.cpp
+	mymod/physics/Push.cpp
+)
+
 set(src_core
 	${src_renderer}
 	${src_framework}
@@ -822,6 +895,24 @@ if(D3XP)
 
 	if(NOT APPLE AND NOT WIN32)
 		install(TARGETS d3xp
+				RUNTIME DESTINATION "${bindir}"
+				LIBRARY DESTINATION "${libdir}"
+				ARCHIVE DESTINATION "${libdir}"
+		)
+	endif()
+endif()
+
+if(MYMOD)
+	add_library(mymod SHARED ${src_mymod})
+	set_target_properties(mymod PROPERTIES PREFIX "")
+	set_target_properties(mymod PROPERTIES COMPILE_DEFINITIONS "GAME_DLL;MYMOD")
+	set_target_properties(mymod PROPERTIES COMPILE_FLAGS "-I${CMAKE_SOURCE_DIR}/mymod")
+	set_target_properties(mymod PROPERTIES LINK_FLAGS "${ldflags}")
+	set_target_properties(mymod PROPERTIES INSTALL_NAME_DIR "@executable_path")
+	target_link_libraries(mymod idlib)
+
+	if(NOT APPLE AND NOT WIN32)
+		install(TARGETS mymod
 				RUNTIME DESTINATION "${bindir}"
 				LIBRARY DESTINATION "${libdir}"
 				ARCHIVE DESTINATION "${libdir}"
