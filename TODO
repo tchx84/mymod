@@ -1,5 +1,9 @@
-* change walk/run speed according to weapon type.
+* Change walk/run speed according to weapon type.
 * Disable weapons when running.
 * Adjust damages per hit box.
-* Review missing movements.
-* Recover HP automatically after some time
+* Recover HP automatically after some time.
+* Add prone standing state.
+* Add knife weapon.
+* Add climbing movement.
+* Add bullseye view.
+* Add lean (both sides) movement.
