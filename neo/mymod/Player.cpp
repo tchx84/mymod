@@ -5725,6 +5725,11 @@ void idPlayer::AdjustSpeed( void ) {
 		speed *= 0.33f;
 	}
 
+    // speed modifier
+    if ( weapon.GetEntity() ) {
+        speed *= weapon.GetEntity()->SpeedModifier();
+    }
+
 	physicsObj.SetSpeed( speed, pm_crouchspeed.GetFloat() );
 }
 

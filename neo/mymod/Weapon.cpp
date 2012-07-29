@@ -327,6 +327,9 @@ void idWeapon::Save( idSaveGame *savefile ) const {
 	savefile->WriteInt( lowAmmo );
 	savefile->WriteBool( powerAmmo );
 
+    // speed modifier
+    savefile->WriteFloat( speedModifier );
+
 	// savegames <= 17
 	savefile->WriteInt( 0 );
 
@@ -479,6 +482,9 @@ void idWeapon::Restore( idRestoreGame *savefile ) {
 	savefile->ReadInt( ammoClip );
 	savefile->ReadInt( lowAmmo );
 	savefile->ReadBool( powerAmmo );
+
+    // speed modifier
+ 	savefile->ReadFloat( speedModifier );   
 
 	// savegame versions <= 17
 	int foo;
@@ -665,6 +671,9 @@ void idWeapon::Clear( void ) {
 	lowAmmo			= 0;
 	powerAmmo		= false;
 
+    // speed modifier
+    speedModifier = 0.0f;
+
 	kick_endtime		= 0;
 	muzzle_kick_time	= 0;
 	muzzle_kick_maxtime	= 0;
@@ -790,6 +799,11 @@ void idWeapon::GetWeaponDef( const char *objectname, int ammoinclip ) {
 	icon				= weaponDef->dict.GetString( "icon" );
 	silent_fire			= weaponDef->dict.GetBool( "silent_fire" );
 	powerAmmo			= weaponDef->dict.GetBool( "powerAmmo" );
+
+    speedModifier       = weaponDef->dict.GetFloat( "speedModifier" );
+    if ( speedModifier <= 0.0f ){
+        speedModifier = 1.0f;
+    }
 
 	muzzle_kick_time	= SEC2MS( weaponDef->dict.GetFloat( "muzzle_kick_time" ) );
 	muzzle_kick_maxtime	= SEC2MS( weaponDef->dict.GetFloat( "muzzle_kick_maxtime" ) );
@@ -2251,6 +2265,15 @@ idWeapon::AmmoRequired
 */
 int	idWeapon::AmmoRequired( void ) const {
 	return ammoRequired;
+}
+
+/*
+================
+idWeapon::SpeedModifier
+================
+*/
+float idWeapon::SpeedModifier( void ) const {
+	return speedModifier;
 }
 
 /*

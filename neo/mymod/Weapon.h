@@ -145,6 +145,9 @@ public:
 	int						LowAmmo( void ) const;
 	int						AmmoRequired( void ) const;
 
+    // speed modifier
+    float                   SpeedModifier( void ) const;
+
 	virtual void			WriteToSnapshot( idBitMsgDelta &msg ) const;
 	virtual void			ReadFromSnapshot( const idBitMsgDelta &msg );
 
@@ -255,7 +258,10 @@ private:
 	int						ammoClip;
 	int						lowAmmo;			// if ammo in clip hits this threshold, snd_
 	bool					powerAmmo;			// true if the clip reduction is a factor of the power setting when
-												// a projectile is launched
+		
+    // speed modifier
+    float speedModifier;
+										// a projectile is launched
 	// mp client
 	bool					isFiring;
 
