@@ -1,4 +1,4 @@
-(a) Change walk/run speed according to weapon type.
+(a) Change walk/run speed according to weapon type. [DONE]
 (b) Disable weapons when running.
 (c) Adjust damages per hit box.
 (d) Recover HP automatically after some time.
@@ -7,4 +7,5 @@
 (g) Add climbing movement.
 (h) Add bullseye view.
 (i) Add lean (both sides) movement.
-(j) Add stamina control. Relates to (b) and (d). 
+(j) Adjust stamina control. Relates to (b) and (d).
+(k) Add weapon selection system.
