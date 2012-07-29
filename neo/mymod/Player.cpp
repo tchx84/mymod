@@ -1289,7 +1289,7 @@ void idPlayer::Init( void ) {
 	// disable stamina on hell levels
 	if ( gameLocal.world && gameLocal.world->spawnArgs.GetBool( "no_stamina" ) ) {
 		pm_stamina.SetFloat( 0.0f );
-	}
+    }
 
 	// stamina always initialized to maximum
 	stamina = pm_stamina.GetFloat();
@@ -5689,8 +5689,9 @@ void idPlayer::AdjustSpeed( void ) {
 		speed = pm_noclipspeed.GetFloat();
 		bobFrac = 0.0f;
 	} else if ( !physicsObj.OnLadder() && ( usercmd.buttons & BUTTON_RUN ) && ( usercmd.forwardmove || usercmd.rightmove ) && ( usercmd.upmove >= 0 ) ) {
-		if ( !gameLocal.isMultiplayer && !physicsObj.IsCrouching() && !PowerUpActive( ADRENALINE ) ) {
-			stamina -= MS2SEC( gameLocal.msec );
+
+		if ( !physicsObj.IsCrouching() && !PowerUpActive( ADRENALINE ) ) {
+			stamina -= MS2SEC( gameLocal.msec ) * 7;
 		}
 		if ( stamina < 0 ) {
 			stamina = 0;
@@ -5702,7 +5703,12 @@ void idPlayer::AdjustSpeed( void ) {
 		} else {
 			bobFrac = stamina / pm_staminathreshold.GetFloat();
 		}
-		speed = pm_walkspeed.GetFloat() * ( 1.0f - bobFrac ) + pm_runspeed.GetFloat() * bobFrac;
+		if ( stamina <= 0 ) {
+			speed = pm_walkspeed.GetFloat();
+        }else {
+            speed = pm_walkspeed.GetFloat() * ( 1.0f - bobFrac ) + pm_runspeed.GetFloat() * bobFrac;
+            speed *= 1.5;
+        }
 	} else {
 		rate = pm_staminarate.GetFloat();
 
