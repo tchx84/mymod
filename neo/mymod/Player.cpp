@@ -2730,7 +2730,19 @@ void idPlayer::UpdateConditions( void ) {
 		AI_STRAFE_RIGHT	= false;
 	}
 
-	AI_RUN			= ( usercmd.buttons & BUTTON_RUN ) && ( ( !pm_stamina.GetFloat() ) || ( stamina > pm_staminathreshold.GetFloat() ) );
+    // disable weapon when running
+    if (( usercmd.buttons & BUTTON_RUN ) && ( ( !pm_stamina.GetFloat() ) || ( stamina > pm_staminathreshold.GetFloat() ) ) ) {
+        if (!AI_RUN){
+            Event_DisableWeapon();
+        }
+        AI_RUN = true;
+    } else {
+        if (AI_RUN){
+            Event_EnableWeapon();
+        }
+        AI_RUN = false;
+    }
+
 	AI_DEAD			= ( health <= 0 );
 }
 
