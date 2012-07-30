@@ -68,7 +68,7 @@ const int WEAPON_SWITCH_DELAY = 150;
 // how many units to raise spectator above default view height so it's in the head of someone
 const int SPECTATE_RAISE = 25;
 
-const int HEALTHPULSE_TIME = 333;
+const int HEALTHPULSE_TIME = 1000;
 
 // minimum speed to bob and play run/walk animations at
 const float MIN_BOB_SPEED = 5.0f;
@@ -3010,8 +3010,6 @@ float idPlayer::PowerUpModifier( int type ) {
 			if ( healthPool <= 0 ) {
 				GiveHealthPool( 100 );
 			}
-		} else {
-			healthPool = 0;
 		}
 	}
 
@@ -5733,6 +5731,11 @@ void idPlayer::AdjustSpeed( void ) {
 		stamina += rate * MS2SEC( gameLocal.msec );
 		if ( stamina > pm_stamina.GetFloat() ) {
 			stamina = pm_stamina.GetFloat();
+
+            // recover health automatically
+            if ( health < inventory.maxHealth && !healthPool && gameLocal.time > nextHealthPulse ) {
+                GiveHealthPool( 1 );
+            }
 		}
 		speed = pm_walkspeed.GetFloat();
 		bobFrac = 0.0f;
