@@ -1129,8 +1129,6 @@ idPlayer::idPlayer() {
 
 	isTelefragged			= false;
 
-    isRunning               = false;
-
 	isLagged				= false;
 	isChatting				= false;
 
@@ -2776,9 +2774,6 @@ idPlayer::FireWeapon
 void idPlayer::FireWeapon( void ) {
 	idMat3 axis;
 	idVec3 muzzle;
-    if ( isRunning ) {
-        return;
-    }
 
 	if ( privateCameraView ) {
 		return;
@@ -4019,10 +4014,6 @@ idPlayer::UpdateWeapon
 ===============
 */
 void idPlayer::UpdateWeapon( void ) {
-    if (isRunning) {
-        StopFiring();
-        return;
-    }
 
 	if ( health <= 0 ) {
 		return;
@@ -5715,11 +5706,9 @@ void idPlayer::AdjustSpeed( void ) {
 		}
 		if ( stamina <= 0 ) {
 			speed = pm_walkspeed.GetFloat();
-            isRunning = false;
         }else {
             speed = pm_walkspeed.GetFloat() * ( 1.0f - bobFrac ) + pm_runspeed.GetFloat() * bobFrac;
             speed *= 1.5;
-            isRunning = true;
         }
 	} else {
 		rate = pm_staminarate.GetFloat();
@@ -5735,7 +5724,6 @@ void idPlayer::AdjustSpeed( void ) {
 		}
 		speed = pm_walkspeed.GetFloat();
 		bobFrac = 0.0f;
-        isRunning = false;
 	}
 
 	speed *= PowerUpModifier(SPEED);

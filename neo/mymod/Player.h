@@ -633,7 +633,6 @@ private:
 	bool					MPAimHighlight;
 	bool					isTelefragged;			// proper obituaries
 
-    bool                    isRunning;
 
 	idPlayerIcon			playerIcon;
 
