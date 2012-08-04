@@ -82,7 +82,7 @@ public:
 	void					Restore( idRestoreGame *savefile );
 
 							// initialisation
-	void					SetSpeed( const float newWalkSpeed, const float newCrouchSpeed );
+	void					SetSpeed( const float newWalkSpeed, const float newCrouchSpeed, const float newProneSpeed );
 	void					SetMaxStepHeight( const float newMaxStepHeight );
 	float					GetMaxStepHeight( void ) const;
 	void					SetMaxJumpHeight( const float newMaxJumpHeight );
@@ -132,6 +132,10 @@ public:	// common physics interface
 	void					WriteToSnapshot( idBitMsgDelta &msg ) const;
 	void					ReadFromSnapshot( const idBitMsgDelta &msg );
 
+    // prone support
+    void                    ToggleProne( void );
+	bool					IsProning( void ) const;
+
 private:
 	// player physics state
 	playerPState_t			current;
@@ -140,6 +144,7 @@ private:
 	// properties
 	float					walkSpeed;
 	float					crouchSpeed;
+	float					proneSpeed;
 	float					maxStepHeight;
 	float					maxJumpHeight;
 	int						debugLevel;				// if set, diagnostic output will be printed

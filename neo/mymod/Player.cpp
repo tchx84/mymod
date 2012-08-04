@@ -1151,6 +1151,7 @@ void idPlayer::LinkScriptVariables( void ) {
 	AI_WEAPON_FIRED.LinkTo(		scriptObject, "AI_WEAPON_FIRED" );
 	AI_JUMP.LinkTo(				scriptObject, "AI_JUMP" );
 	AI_DEAD.LinkTo(				scriptObject, "AI_DEAD" );
+	AI_PRONE.LinkTo(			scriptObject, "AI_PRONE" );
 	AI_CROUCH.LinkTo(			scriptObject, "AI_CROUCH" );
 	AI_ONGROUND.LinkTo(			scriptObject, "AI_ONGROUND" );
 	AI_ONLADDER.LinkTo(			scriptObject, "AI_ONLADDER" );
@@ -1361,6 +1362,7 @@ void idPlayer::Init( void ) {
 	AI_WEAPON_FIRED	= false;
 	AI_JUMP			= false;
 	AI_DEAD			= false;
+	AI_PRONE		= false;
 	AI_CROUCH		= false;
 	AI_ONGROUND		= true;
 	AI_ONLADDER		= false;
@@ -2663,6 +2665,7 @@ void idPlayer::EnterCinematic( void ) {
 	AI_ATTACK_HELD	= false;
 	AI_WEAPON_FIRED	= false;
 	AI_JUMP			= false;
+	AI_PRONE		= false;
 	AI_CROUCH		= false;
 	AI_ONGROUND		= true;
 	AI_ONLADDER		= false;
@@ -4077,6 +4080,16 @@ void idPlayer::UpdateWeapon( void ) {
 
 /*
 ===============
+idPlayer::ToggleProne
+===============
+*/
+
+void idPlayer::ToggleProne( void ) {
+    physicsObj.ToggleProne();
+}
+
+/*
+===============
 idPlayer::SpectateFreeFly
 ===============
 */
@@ -4093,7 +4106,9 @@ void idPlayer::SpectateFreeFly( bool force ) {
 			newOrig = player->GetPhysics()->GetOrigin();
 			if ( player->physicsObj.IsCrouching() ) {
 				newOrig[ 2 ] += pm_crouchviewheight.GetFloat();
-			} else {
+			} else if ( player->physicsObj.IsProning() ) {
+                newOrig[ 2 ] += pm_proneviewheight.GetFloat();
+            } else {
 				newOrig[ 2 ] += pm_normalviewheight.GetFloat();
 			}
 			newOrig[ 2 ] += SPECTATE_RAISE;
@@ -4752,7 +4767,9 @@ void idPlayer::BobCycle( const idVec3 &pushVelocity ) {
 		if ( physicsObj.IsCrouching() ) {
 			bobmove = pm_crouchbob.GetFloat();
 			// ducked characters never play footsteps
-		} else {
+		} else if ( physicsObj.IsProning() ) {
+            bobmove = pm_pronebob.GetFloat();
+        } else {
 			// vary the bobbing based on the speed of the player
 			bobmove = pm_walkbob.GetFloat() * ( 1.0f - bobFrac ) + pm_runbob.GetFloat() * bobFrac;
 		}
@@ -4788,6 +4805,9 @@ void idPlayer::BobCycle( const idVec3 &pushVelocity ) {
 	delta = bobfracsin * pm_bobroll.GetFloat() * speed;
 	if ( physicsObj.IsCrouching() ) {
 		delta *= 3;		// crouching accentuates roll
+	}
+	if ( physicsObj.IsProning() ) {
+		delta *= 6;		// proning accentuates roll even more
 	}
 	if ( bobFoot & 1 ) {
 		delta = -delta;
@@ -5578,6 +5598,10 @@ void idPlayer::PerformImpulse( int impulse ) {
 			PrevWeapon();
 			break;
 		}
+		case IMPULSE_16: {
+			ToggleProne();
+			break;
+		}
 		case IMPULSE_17: {
 			if ( gameLocal.isClient || entityNumber == gameLocal.localClientNum ) {
 				gameLocal.mpGame.ToggleReady();
@@ -5728,6 +5752,11 @@ void idPlayer::AdjustSpeed( void ) {
 			 rate *= 1.25f;
 		}
 
+        // increase faster when at prone position
+        if ( physicsObj.IsProning() ){
+            rate *= 1.50f;
+        }
+
 		stamina += rate * MS2SEC( gameLocal.msec );
 		if ( stamina > pm_stamina.GetFloat() ) {
 			stamina = pm_stamina.GetFloat();
@@ -5752,7 +5781,7 @@ void idPlayer::AdjustSpeed( void ) {
         speed *= weapon.GetEntity()->SpeedModifier();
     }
 
-	physicsObj.SetSpeed( speed, pm_crouchspeed.GetFloat() );
+	physicsObj.SetSpeed( speed, pm_crouchspeed.GetFloat(), pm_pronespeed.GetFloat() );
 }
 
 /*
@@ -5973,8 +6002,10 @@ void idPlayer::Move( void ) {
 		physicsObj.SetContents( CONTENTS_BODY );
 		physicsObj.SetMovementType( PM_FREEZE );
 	} else {
-		physicsObj.SetContents( CONTENTS_BODY );
-		physicsObj.SetMovementType( PM_NORMAL );
+        if ( !physicsObj.IsProning() ){
+		    physicsObj.SetContents( CONTENTS_BODY );
+		    physicsObj.SetMovementType( PM_NORMAL );
+        }
 	}
 
 	if ( spectating ) {
@@ -6001,6 +6032,8 @@ void idPlayer::Move( void ) {
 		newEyeOffset = pm_deadviewheight.GetFloat();
 	} else if ( physicsObj.IsCrouching() ) {
 		newEyeOffset = pm_crouchviewheight.GetFloat();
+	} else if ( physicsObj.IsProning() ) {
+		newEyeOffset = pm_proneviewheight.GetFloat();
 	} else if ( GetBindMaster() && GetBindMaster()->IsType( idAFEntity_Vehicle::Type ) ) {
 		newEyeOffset = 0.0f;
 	} else {
@@ -6011,8 +6044,12 @@ void idPlayer::Move( void ) {
 		if ( spectating ) {
 			SetEyeHeight( newEyeOffset );
 		} else {
-			// smooth out duck height changes
-			SetEyeHeight( EyeHeight() * pm_crouchrate.GetFloat() + newEyeOffset * ( 1.0f - pm_crouchrate.GetFloat() ) );
+            if ( physicsObj.IsProning() ) {
+                SetEyeHeight( EyeHeight() * pm_pronerate.GetFloat() + newEyeOffset * ( 1.0f - pm_pronerate.GetFloat() ) );
+            } else {
+                // smooth out duck height changes
+                SetEyeHeight( EyeHeight() * pm_crouchrate.GetFloat() + newEyeOffset * ( 1.0f - pm_crouchrate.GetFloat() ) );
+            }
 		}
 	}
 
@@ -6021,11 +6058,13 @@ void idPlayer::Move( void ) {
 		AI_ONGROUND	= ( influenceActive == INFLUENCE_LEVEL2 );
 		AI_ONLADDER	= false;
 		AI_JUMP		= false;
+        AI_PRONE    = false;
 	} else {
 		AI_CROUCH	= physicsObj.IsCrouching();
 		AI_ONGROUND	= physicsObj.HasGroundContacts();
 		AI_ONLADDER	= physicsObj.OnLadder();
 		AI_JUMP		= physicsObj.HasJumped();
+		AI_PRONE	= physicsObj.IsProning();
 
 		// check if we're standing on top of a monster and give a push if we are
 		idEntity *groundEnt = physicsObj.GetGroundEntity();

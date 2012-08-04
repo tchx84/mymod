@@ -244,6 +244,7 @@ public:
 	idScriptBool			AI_ATTACK_HELD;
 	idScriptBool			AI_WEAPON_FIRED;
 	idScriptBool			AI_JUMP;
+	idScriptBool			AI_PRONE;
 	idScriptBool			AI_CROUCH;
 	idScriptBool			AI_ONGROUND;
 	idScriptBool			AI_ONLADDER;
@@ -436,6 +437,7 @@ public:
 	void					SelectWeapon( int num, bool force );
 	void					DropWeapon( bool died ) ;
 	void					StealWeapon( idPlayer *player );
+	void					ToggleProne( void );
 	void					AddProjectilesFired( int count );
 	void					AddProjectileHits( int count );
 	void					SetLastHitTime( int time );

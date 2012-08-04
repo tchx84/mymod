@@ -64,6 +64,7 @@ const int PMF_JUMP_HELD			= 16;		// set when jump button is held down
 const int PMF_TIME_LAND			= 32;		// movementTime is time before rejump
 const int PMF_TIME_KNOCKBACK	= 64;		// movementTime is an air-accelerate only time
 const int PMF_TIME_WATERJUMP	= 128;		// movementTime is waterjump
+const int PMF_PRONED			= 256;		// set when at prone position
 const int PMF_ALL_TIMES			= (PMF_TIME_WATERJUMP|PMF_TIME_LAND|PMF_TIME_KNOCKBACK);
 
 int c_pmove = 0;
@@ -1077,7 +1078,15 @@ void idPhysics_Player::CheckDuck( void ) {
 
 	if ( current.movementType == PM_DEAD ) {
 		maxZ = pm_deadheight.GetFloat();
-	} else {
+	} else if ( IsProning() ) {
+
+	    playerSpeed = proneSpeed;
+        maxZ = pm_proneheight.GetFloat();
+        
+        // remove ducked if proning
+        current.movementFlags &= ~PMF_DUCKED;
+
+    }else {
 		// stand up when up against a ladder
 		if ( command.upmove < 0 && !ladder ) {
 			// duck
@@ -1195,6 +1204,9 @@ bool idPhysics_Player::CheckJump( void ) {
 	if ( current.movementFlags & PMF_DUCKED ) {
 		return false;
 	}
+
+    // remove prone when jump
+    current.movementFlags &= ~PMF_PRONED;
 
 	groundPlane = false;		// jumping away
 	walking = false;
@@ -1503,6 +1515,7 @@ idPhysics_Player::idPhysics_Player( void ) {
 	saved = current;
 	walkSpeed = 0;
 	crouchSpeed = 0;
+    proneSpeed = 0;
 	maxStepHeight = 0;
 	maxJumpHeight = 0;
 	memset( &command, 0, sizeof( command ) );
@@ -1566,6 +1579,7 @@ void idPhysics_Player::Save( idSaveGame *savefile ) const {
 
 	savefile->WriteFloat( walkSpeed );
 	savefile->WriteFloat( crouchSpeed );
+	savefile->WriteFloat( proneSpeed );
 	savefile->WriteFloat( maxStepHeight );
 	savefile->WriteFloat( maxJumpHeight );
 	savefile->WriteInt( debugLevel );
@@ -1603,6 +1617,7 @@ void idPhysics_Player::Restore( idRestoreGame *savefile ) {
 
 	savefile->ReadFloat( walkSpeed );
 	savefile->ReadFloat( crouchSpeed );
+	savefile->ReadFloat( proneSpeed );
 	savefile->ReadFloat( maxStepHeight );
 	savefile->ReadFloat( maxJumpHeight );
 	savefile->ReadInt( debugLevel );
@@ -1643,9 +1658,10 @@ void idPhysics_Player::SetPlayerInput( const usercmd_t &cmd, const idAngles &new
 idPhysics_Player::SetSpeed
 ================
 */
-void idPhysics_Player::SetSpeed( const float newWalkSpeed, const float newCrouchSpeed ) {
+void idPhysics_Player::SetSpeed( const float newWalkSpeed, const float newCrouchSpeed, const float newProneSpeed ) {
 	walkSpeed = newWalkSpeed;
 	crouchSpeed = newCrouchSpeed;
+    proneSpeed = newProneSpeed;
 }
 
 /*
@@ -1989,7 +2005,7 @@ const int	PLAYER_VELOCITY_TOTAL_BITS		= 16;
 const int	PLAYER_VELOCITY_EXPONENT_BITS	= idMath::BitsForInteger( idMath::BitsForFloat( PLAYER_VELOCITY_MAX ) ) + 1;
 const int	PLAYER_VELOCITY_MANTISSA_BITS	= PLAYER_VELOCITY_TOTAL_BITS - 1 - PLAYER_VELOCITY_EXPONENT_BITS;
 const int	PLAYER_MOVEMENT_TYPE_BITS		= 3;
-const int	PLAYER_MOVEMENT_FLAGS_BITS		= 8;
+const int	PLAYER_MOVEMENT_FLAGS_BITS		= 9;
 
 /*
 ================
@@ -2041,4 +2057,22 @@ void idPhysics_Player::ReadFromSnapshot( const idBitMsgDelta &msg ) {
 	if ( clipModel ) {
 		clipModel->Link( gameLocal.clip, self, 0, current.origin, clipModel->GetAxis() );
 	}
+}
+
+/*
+================
+idPhysics_Player::IsCrouching
+================
+*/
+bool idPhysics_Player::IsProning( void ) const {
+	return ( ( current.movementFlags & PMF_PRONED ) != 0 );
+}
+
+/*
+================
+idPhysics_Player::ToggleProne
+================
+*/
+void idPhysics_Player::ToggleProne( void ) {
+    current.movementFlags ^= PMF_PRONED;
 }
