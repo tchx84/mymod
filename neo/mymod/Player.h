@@ -244,6 +244,7 @@ public:
 	idScriptBool			AI_ATTACK_HELD;
 	idScriptBool			AI_WEAPON_FIRED;
 	idScriptBool			AI_JUMP;
+	idScriptBool			AI_CLIMB;
 	idScriptBool			AI_PRONE;
 	idScriptBool			AI_CROUCH;
 	idScriptBool			AI_ONGROUND;

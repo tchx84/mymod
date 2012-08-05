@@ -65,10 +65,11 @@ const int PMF_TIME_LAND			= 32;		// movementTime is time before rejump
 const int PMF_TIME_KNOCKBACK	= 64;		// movementTime is an air-accelerate only time
 const int PMF_TIME_WATERJUMP	= 128;		// movementTime is waterjump
 const int PMF_PRONED			= 256;		// set when at prone position
-const int PMF_ALL_TIMES			= (PMF_TIME_WATERJUMP|PMF_TIME_LAND|PMF_TIME_KNOCKBACK);
+const int PMF_TIME_CLIMB		= 512;		// movementTime is climb
+const int PMF_ALL_TIMES			= (PMF_TIME_WATERJUMP|PMF_TIME_LAND|PMF_TIME_KNOCKBACK|PMF_TIME_CLIMB);
 
 int c_pmove = 0;
-
+idVec3 climbUpEnd;
 /*
 ============
 idPhysics_Player::CmdScale
@@ -611,6 +612,11 @@ void idPhysics_Player::AirMove( void ) {
 	float		wishspeed;
 	float		scale;
 
+    if ( command.upmove && !( current.movementFlags & PMF_JUMP_HELD ) &&  idPhysics_Player::CheckClimb() ) {
+        idPhysics_Player::ClimbMove();
+        return;
+    }
+    
 	idPhysics_Player::Friction();
 
 	scale = idPhysics_Player::CmdScale( command );
@@ -659,6 +665,11 @@ void idPhysics_Player::WalkMove( void ) {
 		idPhysics_Player::WaterMove();
 		return;
 	}
+
+    if ( idPhysics_Player::CheckClimb()  ) {
+        idPhysics_Player::ClimbMove();
+        return;
+    }
 
 	if ( idPhysics_Player::CheckJump() ) {
 		// jumped away
@@ -766,6 +777,67 @@ void idPhysics_Player::DeadMove( void ) {
 		current.velocity.Normalize();
 		current.velocity *= forward;
 	}
+}
+
+/*
+===============
+idPhysics_Player::ClimbForwardMove
+===============
+*/
+void idPhysics_Player::ClimbForwardMove( void ) {
+    idVec3		wishvel;
+	idVec3		wishdir;
+	float		wishspeed;
+	float		scale;
+
+	idPhysics_Player::Friction();
+
+	scale = idPhysics_Player::CmdScale( command );
+
+	// project moves down to flat plane
+	viewForward -= (viewForward * gravityNormal) * gravityNormal;
+	viewRight -= (viewRight * gravityNormal) * gravityNormal;
+	viewForward.Normalize();
+	viewRight.Normalize();
+
+	wishvel = viewForward * command.forwardmove + viewRight * command.rightmove;
+	wishvel -= (wishvel * gravityNormal) * gravityNormal;
+	wishdir = wishvel;
+	wishspeed = wishdir.Normalize();
+	wishspeed *= scale;
+
+	// not on ground, so little effect on velocity
+	idPhysics_Player::Accelerate( wishdir, wishspeed, PM_AIRACCELERATE );
+
+	idPhysics_Player::SlideMove( true, false, false, false );
+
+    if ( current.origin.z >= climbUpEnd.z ) {
+        idVec3 forward;
+        current.movementFlags &= ~PMF_TIME_CLIMB;
+
+        forward = viewForward - (gravityNormal * viewForward) * gravityNormal;
+        forward.Normalize();
+        current.velocity += 80.0f * forward;
+    }
+
+}
+
+/*
+===============
+idPhysics_Player::ClimbMove
+===============
+*/
+void idPhysics_Player::ClimbMove( void ) {
+	idVec3 addVelocity;
+
+    groundPlane = false;		// jumping away
+    walking = false;
+    current.movementFlags |= PMF_TIME_CLIMB;
+    
+    addVelocity = 2.0f * (maxJumpHeight*1.6) * -gravityVector;
+    addVelocity *= idMath::Sqrt( addVelocity.Normalize() );
+    current.velocity = addVelocity;
+
 }
 
 /*
@@ -1187,6 +1259,52 @@ void idPhysics_Player::CheckLadder( void ) {
 idPhysics_Player::CheckJump
 =============
 */
+bool idPhysics_Player::CheckClimb( void ) {
+	idVec3		forward, upEnd,forwardEnd;
+	trace_t		upTrace, forwardTrace;
+
+	if ( command.upmove < 10 ) {
+		// not holding jump
+		return false;
+	}
+
+	// don't jump if we can't stand up
+	if ( current.movementFlags & PMF_DUCKED ) {
+		return false;
+	}
+
+	forward = viewForward - (gravityNormal * viewForward) * gravityNormal;
+	forward.Normalize();
+
+    upEnd = current.origin -  (maxJumpHeight / 2.0f) * gravityNormal;
+    gameLocal.clip.Translation( upTrace, current.origin, upEnd, clipModel, clipModel->GetAxis(), clipMask, self );
+
+    if ( upTrace.fraction >= 1.0f ) {
+        forwardEnd = upEnd + 10.0f * forward;
+        gameLocal.clip.Translation( forwardTrace, upEnd, forwardEnd, clipModel, clipModel->GetAxis(), clipMask, self );
+        if ( forwardTrace.fraction >= 1.0f ) {
+            return false;
+        }
+
+        upEnd = current.origin - (maxJumpHeight * 1.5) * gravityNormal;
+        gameLocal.clip.Translation( upTrace, current.origin, upEnd, clipModel, clipModel->GetAxis(), clipMask, self );
+        if ( upTrace.fraction >= 1.0f ) {
+            forwardEnd = upEnd + 40.0f * forward;
+            gameLocal.clip.Translation( forwardTrace, upEnd, forwardEnd, clipModel, clipModel->GetAxis(), clipMask, self );
+            if ( forwardTrace.fraction >= 1.0f ) {                
+                climbUpEnd = upEnd;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+/*
+=============
+idPhysics_Player::CheckJump
+=============
+*/
 bool idPhysics_Player::CheckJump( void ) {
 	idVec3 addVelocity;
 
@@ -1425,11 +1543,13 @@ void idPhysics_Player::MovePlayer( int msec ) {
 		// walking on ground
 		idPhysics_Player::WalkMove();
 	}
+	else if ( current.movementFlags & PMF_TIME_CLIMB ) {
+		idPhysics_Player::ClimbForwardMove();
+	}
 	else {
 		// airborne
 		idPhysics_Player::AirMove();
 	}
-
 	// set watertype, waterlevel and groundentity
 	idPhysics_Player::SetWaterLevel();
 	idPhysics_Player::CheckGround();
@@ -2005,7 +2125,7 @@ const int	PLAYER_VELOCITY_TOTAL_BITS		= 16;
 const int	PLAYER_VELOCITY_EXPONENT_BITS	= idMath::BitsForInteger( idMath::BitsForFloat( PLAYER_VELOCITY_MAX ) ) + 1;
 const int	PLAYER_VELOCITY_MANTISSA_BITS	= PLAYER_VELOCITY_TOTAL_BITS - 1 - PLAYER_VELOCITY_EXPONENT_BITS;
 const int	PLAYER_MOVEMENT_TYPE_BITS		= 3;
-const int	PLAYER_MOVEMENT_FLAGS_BITS		= 9;
+const int	PLAYER_MOVEMENT_FLAGS_BITS		= 10;
 
 /*
 ================
@@ -2066,6 +2186,15 @@ idPhysics_Player::IsCrouching
 */
 bool idPhysics_Player::IsProning( void ) const {
 	return ( ( current.movementFlags & PMF_PRONED ) != 0 );
+}
+
+/*
+================
+idPhysics_Player::IsClimbing
+================
+*/
+bool idPhysics_Player::IsClimbing( void ) const {
+	return ( ( current.movementFlags & PMF_TIME_CLIMB ) != 0 );
 }
 
 /*

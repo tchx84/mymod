@@ -1150,6 +1150,7 @@ void idPlayer::LinkScriptVariables( void ) {
 	AI_ATTACK_HELD.LinkTo(		scriptObject, "AI_ATTACK_HELD" );
 	AI_WEAPON_FIRED.LinkTo(		scriptObject, "AI_WEAPON_FIRED" );
 	AI_JUMP.LinkTo(				scriptObject, "AI_JUMP" );
+	AI_CLIMB.LinkTo(			scriptObject, "AI_CLIMB" );
 	AI_DEAD.LinkTo(				scriptObject, "AI_DEAD" );
 	AI_PRONE.LinkTo(			scriptObject, "AI_PRONE" );
 	AI_CROUCH.LinkTo(			scriptObject, "AI_CROUCH" );
@@ -1361,6 +1362,7 @@ void idPlayer::Init( void ) {
 	AI_ATTACK_HELD	= false;
 	AI_WEAPON_FIRED	= false;
 	AI_JUMP			= false;
+	AI_CLIMB		= false;
 	AI_DEAD			= false;
 	AI_PRONE		= false;
 	AI_CROUCH		= false;
@@ -2665,6 +2667,7 @@ void idPlayer::EnterCinematic( void ) {
 	AI_ATTACK_HELD	= false;
 	AI_WEAPON_FIRED	= false;
 	AI_JUMP			= false;
+	AI_CLIMB		= false;
 	AI_PRONE		= false;
 	AI_CROUCH		= false;
 	AI_ONGROUND		= true;
@@ -2733,20 +2736,21 @@ void idPlayer::UpdateConditions( void ) {
 		AI_STRAFE_RIGHT	= false;
 	}
 
-    // disable weapon when running
-    if (( usercmd.buttons & BUTTON_RUN ) && ( ( !pm_stamina.GetFloat() ) || ( stamina > pm_staminathreshold.GetFloat() ) ) ) {
-        if (!AI_RUN){
+    AI_RUN = (( usercmd.buttons & BUTTON_RUN ) && ( ( !pm_stamina.GetFloat() ) || ( stamina > pm_staminathreshold.GetFloat() ) ) );
+    AI_CLIMB = physicsObj.IsClimbing();
+	AI_DEAD			= ( health <= 0 );
+
+    // weapon disabling
+    if ( AI_RUN || AI_CLIMB ){
+        if ( weaponEnabled ){
             Event_DisableWeapon();
         }
-        AI_RUN = true;
     } else {
-        if (AI_RUN){
+        if ( !weaponEnabled ){
             Event_EnableWeapon();
         }
-        AI_RUN = false;
     }
 
-	AI_DEAD			= ( health <= 0 );
 }
 
 /*
@@ -6058,12 +6062,14 @@ void idPlayer::Move( void ) {
 		AI_ONGROUND	= ( influenceActive == INFLUENCE_LEVEL2 );
 		AI_ONLADDER	= false;
 		AI_JUMP		= false;
+		AI_CLIMB	= false;
         AI_PRONE    = false;
 	} else {
 		AI_CROUCH	= physicsObj.IsCrouching();
 		AI_ONGROUND	= physicsObj.HasGroundContacts();
 		AI_ONLADDER	= physicsObj.OnLadder();
 		AI_JUMP		= physicsObj.HasJumped();
+		AI_CLIMB	= physicsObj.IsClimbing();
 		AI_PRONE	= physicsObj.IsProning();
 
 		// check if we're standing on top of a monster and give a push if we are

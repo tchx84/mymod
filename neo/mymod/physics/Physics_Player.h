@@ -135,6 +135,7 @@ public:	// common physics interface
     // prone support
     void                    ToggleProne( void );
 	bool					IsProning( void ) const;
+    bool					IsClimbing( void ) const;
 
 private:
 	// player physics state
@@ -185,6 +186,8 @@ private:
 	void					AirMove( void );
 	void					WalkMove( void );
 	void					DeadMove( void );
+    void					ClimbForwardMove( void );
+    void					ClimbMove( void );
 	void					NoclipMove( void );
 	void					SpectatorMove( void );
 	void					LadderMove( void );
@@ -192,6 +195,7 @@ private:
 	void					CheckGround( void );
 	void					CheckDuck( void );
 	void					CheckLadder( void );
+    bool                    CheckClimb( void );
 	bool					CheckJump( void );
 	bool					CheckWaterJump( void );
 	void					SetWaterLevel( void );
