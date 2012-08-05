@@ -5762,7 +5762,7 @@ void idPlayer::AdjustSpeed( void ) {
 			stamina = pm_stamina.GetFloat();
 
             // recover health automatically
-            if ( health < inventory.maxHealth && !healthPool && gameLocal.time > nextHealthPulse ) {
+            if ( (gameLocal.isMultiplayer && !gameLocal.isClient) && health < inventory.maxHealth && !healthPool && gameLocal.time > nextHealthPulse ) {
                 GiveHealthPool( 1 );
             }
 		}
