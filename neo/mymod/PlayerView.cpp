@@ -189,7 +189,6 @@ void idPlayerView::ClearEffects() {
 	lastDamageTime = MS2SEC( gameLocal.time - 99999 );
 
 	dvFinishTime = ( gameLocal.time - 99999 );
-	kickFinishTime = ( gameLocal.time - 99999 );
 
 	for ( int i = 0 ; i < MAX_SCREEN_BLOBS ; i++ ) {
 		screenBlobs[i].finishTime = gameLocal.time;
@@ -247,26 +246,22 @@ void idPlayerView::DamageImpulse( idVec3 localKickDir, const idDict *damageDef )
 	//
 	// head angle kick
 	//
-	float	kickTime = damageDef->GetFloat( "kick_time" );
-	if ( kickTime ) {
-		kickFinishTime = gameLocal.time + g_kickTime.GetFloat() * kickTime;
 
-		// forward / back kick will pitch view
-		kickAngles[0] = localKickDir[0];
+	// forward / back kick will pitch view
+	kickAngles[0] += localKickDir[0];
 
-		// side kick will yaw view
-		kickAngles[1] = localKickDir[1]*0.5f;
+	// side kick will yaw view
+	kickAngles[1] += localKickDir[1]*0.5f;
 
-		// up / down kick will pitch view
-		kickAngles[0] += localKickDir[2];
+	// up / down kick will pitch view
+	kickAngles[0] += localKickDir[2];
 
-		// roll will come from  side
-		kickAngles[2] = localKickDir[1];
+	// roll will come from  side
+	kickAngles[2] += localKickDir[1];
 
-		float kickAmplitude = damageDef->GetFloat( "kick_amplitude" );
-		if ( kickAmplitude ) {
-			kickAngles *= kickAmplitude;
-		}
+	float kickAmplitude = damageDef->GetFloat( "kick_amplitude" );
+	if ( kickAmplitude ) {
+		kickAngles *= kickAmplitude;
 	}
 
 	//
@@ -356,18 +351,10 @@ Called when a weapon fires, generates head twitches, etc
 ==================
 */
 void idPlayerView::WeaponFireFeedback( const idDict *weaponDef ) {
-	int		recoilTime;
-
-	recoilTime = weaponDef->GetInt( "recoilTime" );
-	// don't shorten a damage kick in progress
-	if ( recoilTime && kickFinishTime < gameLocal.time ) {
-		idAngles angles;
+        idAngles angles;
+		
 		weaponDef->GetAngles( "recoilAngles", "5 0 0", angles );
-		kickAngles = angles;
-		int	finish = gameLocal.time + g_kickTime.GetFloat() * recoilTime;
-		kickFinishTime = finish;
-	}
-
+        kickAngles += angles;
 }
 
 /*
@@ -407,24 +394,7 @@ idPlayerView::AngleOffset
 ===================
 */
 idAngles idPlayerView::AngleOffset() const {
-	idAngles	ang;
-
-	ang.Zero();
-
-	if ( gameLocal.time < kickFinishTime ) {
-		float offset = kickFinishTime - gameLocal.time;
-
-		ang = kickAngles * offset * offset * g_kickAmplitude.GetFloat();
-
-		for ( int i = 0 ; i < 3 ; i++ ) {
-			if ( ang[i] > 70.0f ) {
-				ang[i] = 70.0f;
-			} else if ( ang[i] < -70.0f ) {
-				ang[i] = -70.0f;
-			}
-		}
-	}
-	return ang;
+	return kickAngles ;
 }
 
 /*
@@ -723,4 +693,9 @@ void idPlayerView::RenderPlayerView( idUserInterface *hud ) {
 		renderSystem->SetColor4( 1.0f, 1.0f, 1.0f, 1.0f );
 		renderSystem->DrawStretchPic( 10.0f, 380.0f, 64.0f, 64.0f, 0.0f, 0.0f, 1.0f, 1.0f, lagoMaterial );
 	}
+
+    if ( gameLocal.time > kickFinishTime ) {
+        kickAngles *= 0.90;
+        kickFinishTime = gameLocal.time + 25;
+    }
 }
