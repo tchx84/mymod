@@ -337,15 +337,7 @@ void idInventory::RestoreInventory( idPlayer *owner, const idDict &dict ) {
 	deplete_ammount	= dict.GetInt( "deplete_ammount", "1" );
 
 	// the clip and powerups aren't restored
-
-	// ammo
-	for( i = 0; i < AMMO_NUMTYPES; i++ ) {
-		name = idWeapon::GetAmmoNameForNum( ( ammo_t )i );
-		if ( name ) {
-			ammo[ i ] = dict.GetInt( name );
-		}
-	}
-
+    
 	// items
 	num = dict.GetInt( "items" );
 	items.SetNum( num );
@@ -401,12 +393,36 @@ void idInventory::RestoreInventory( idPlayer *owner, const idDict &dict ) {
 	// weapons are stored as a number for persistant data, but as strings in the entityDef
 	weapons	= dict.GetInt( "weapon_bits", "0" );
 
-	if ( g_skill.GetInteger() >= 3 ) {
-		Give( owner, dict, "weapon", dict.GetString( "weapon_nightmare" ), NULL, false );
-	} else {
-		Give( owner, dict, "weapon", dict.GetString( "weapon" ), NULL, false );
-	}
+    if ( owner->primary_weapon != -1 ) {
+        int pistolNum = 1;
 
+        const char *weapon1 = owner->spawnArgs.GetString( va( "def_weapon%d", pistolNum ));
+        const char *weapon2 = owner->spawnArgs.GetString( va( "def_weapon%d", owner->primary_weapon ));
+        Give( owner, dict, "weapon", weapon1, NULL, false );
+        Give( owner, dict, "weapon", weapon2, NULL, false );
+
+        ammo_t ammo_i = AmmoIndexForWeaponClass( weapon1, NULL );
+        name = idWeapon::GetAmmoNameForNum( ( ammo_t )ammo_i );
+        ammo[ ammo_i ] = dict.GetInt( name );
+
+        ammo_i = AmmoIndexForWeaponClass( weapon2, NULL );
+        name = idWeapon::GetAmmoNameForNum( ( ammo_t )ammo_i );
+        ammo[ ammo_i ] = dict.GetInt( name );
+    } else {
+        // ammo
+        for( i = 0; i < AMMO_NUMTYPES; i++ ) {
+            name = idWeapon::GetAmmoNameForNum( ( ammo_t )i );
+            if ( name ) {
+                ammo[ i ] = dict.GetInt( name );
+            }
+        }
+
+        if ( g_skill.GetInteger() >= 3 ) {
+            Give( owner, dict, "weapon", dict.GetString( "weapon_nightmare" ), NULL, false );
+        } else {
+            Give( owner, dict, "weapon", dict.GetString( "weapon" ), NULL, false );
+        }
+    }
 	num = dict.GetInt( "levelTriggers" );
 	for ( i = 0; i < num; i++ ) {
 		sprintf( itemname, "levelTrigger_Level_%i", i );
@@ -830,6 +846,10 @@ bool idInventory::Give( idPlayer *owner, const idDict &spawnArgs, const char *st
 						owner->hud->HandleNamedEvent( "newWeapon" );
 						lastGiveTime = gameLocal.time;
 					}
+                    if( CountWeapons() >= 2 ){
+                        owner->DropWeapon(false);
+						*idealWeapon = i;
+                    }
 					weaponPulse = true;
 					weapons |= ( 1 << i );
 					tookWeapon = true;
@@ -948,6 +968,20 @@ void idInventory::UpdateArmor( void ) {
 }
 
 /*
+===============
+idInventory::CountWeapons
+===============
+*/
+int idInventory::CountWeapons( void ) {
+    unsigned int v = weapons; // count the number of bits set in v
+    unsigned int c; // c accumulates the total bits set in v
+    for (c = 0; v; c++) {
+        v &= v - 1; // clear the least significant bit set
+    }
+    return c;
+}
+
+/*
 ==============
 idPlayer::idPlayer
 ==============
@@ -1037,6 +1071,7 @@ idPlayer::idPlayer() {
 	weapon_soulcube			= -1;
 	weapon_pda				= -1;
 	weapon_fists			= -1;
+	primary_weapon			= -1;
 	showWeaponViewModel		= true;
     hasIronSight             = false;
 
@@ -1134,6 +1169,7 @@ idPlayer::idPlayer() {
 	isChatting				= false;
 
 	selfSmooth				= false;
+    weaponTouching			= NULL;
 }
 
 /*
@@ -2322,6 +2358,9 @@ void idPlayer::RestorePersistantInfo( void ) {
 	if ( !gameLocal.isClient ) {
 		idealWeapon = spawnArgs.GetInt( "current_weapon", "1" );
 	}
+    if( primary_weapon != -1 ) {
+        idealWeapon = primary_weapon;
+    }
 }
 
 /*
@@ -3708,9 +3747,6 @@ void idPlayer::DropWeapon( bool died ) {
 		return;
 	}
 
-	if ( ( !died && !weapon.GetEntity()->IsReady() ) || weapon.GetEntity()->IsReloading() ) {
-		return;
-	}
 	// ammoavailable is how many shots we can fire
 	// inclip is which amount is in clip right now
 	ammoavailable = weapon.GetEntity()->AmmoAvailable();
@@ -8508,6 +8544,49 @@ idPlayer::CanShowWeaponViewmodel
 */
 bool idPlayer::CanShowWeaponViewmodel( void ) const {
 	return showWeaponViewModel;
+}
+
+/*
+===============
+idPlayer::TouchWeapon
+===============
+*/
+void idPlayer::TouchWeapon( idItem *weapon ) {
+    weaponTouching = weapon;
+}
+
+/*
+===============
+idPlayer::CanPickupWeapon
+===============
+*/
+bool idPlayer::CanPickupWeapon( void ){
+    if( weaponTouching ){
+        idBounds player_bounds = GetPhysics()->GetAbsBounds();
+        idBounds weapon_bounds = weaponTouching->GetPhysics()->GetAbsBounds();
+        
+        if( player_bounds.IntersectsBounds(weapon_bounds) ){
+            return true;
+        } else {
+            weaponTouching = NULL;
+        }
+    }
+    return false;
+}
+
+/*
+===============
+idPlayer::PickupWeapon
+===============
+*/
+void idPlayer::PickupWeapon( void ){
+    if( CanPickupWeapon() ){
+        weaponTouching->Pickup(this);
+        weaponTouching = NULL;
+        /*if ( hud ) {
+            hud->HandleNamedEvent( "untouchWeapon" );
+            }*/
+    }
 }
 
 /*

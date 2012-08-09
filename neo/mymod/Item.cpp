@@ -515,6 +515,20 @@ void idItem::Event_Touch( idEntity *other, trace_t *trace ) {
 	if ( !canPickUp ) {
 		return;
 	}
+	const idKeyValue	*arg;
+	idDict				attr;
+    int i;
+    this->GetAttributes( attr );
+
+	for( i = 0; i < attr.GetNumKeyVals(); i++ ) {
+        arg = attr.GetKeyVal( i );
+        const char *key = (const char *)arg->GetKey();
+
+        if( !idStr::Icmp( key, "weapon" ) ){
+            static_cast<idPlayer *>(other)->TouchWeapon(this);
+            return;
+        }
+    }
 
 	Pickup( static_cast<idPlayer *>(other) );
 }

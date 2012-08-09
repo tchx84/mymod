@@ -1845,6 +1845,9 @@ void idGameLocal::SpawnPlayer( int clientNum ) {
 	}
 
 	mpGame.SpawnPlayer( clientNum );
+    if( clientNum == localClientNum){
+        mpGame.SelectWeapons(true);
+    }
 }
 
 /*

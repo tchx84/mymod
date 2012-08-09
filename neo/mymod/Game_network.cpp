@@ -819,6 +819,15 @@ void idGameLocal::ServerProcessReliableMessage( int clientNum, const idBitMsg &m
 			mpGame.DropWeapon( clientNum );
 			break;
 		}
+		case GAME_RELIABLE_MESSAGE_CHANGEWEAPON: {
+			int weapon = msg.ReadInt();
+			mpGame.ChangeWeapon( clientNum, weapon );
+			break;
+		}
+		case GAME_RELIABLE_MESSAGE_PICKUPWEAPON: {
+			mpGame.PickupWeapon( clientNum );
+			break;
+		}
 		case GAME_RELIABLE_MESSAGE_CALLVOTE: {
 			mpGame.ServerCallVote( clientNum, msg );
 			break;

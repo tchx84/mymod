@@ -174,7 +174,10 @@ public:
 	void			DisconnectClient( int clientNum );
 	static void		ForceReady_f( const idCmdArgs &args );
 	static void		DropWeapon_f( const idCmdArgs &args );
+	static void		ChangeWeapon_f( const idCmdArgs &args );
 	static void		MessageMode_f( const idCmdArgs &args );
+	static void		SelectWeapons_f( const idCmdArgs &args );
+	static void		PickupWeapon_f( const idCmdArgs &args );
 	static void		VoiceChat_f( const idCmdArgs &args );
 	static void		VoiceChatTeam_f( const idCmdArgs &args );
 
@@ -212,6 +215,7 @@ public:
 	void			WantKilled( int clientNum );
 	int				NumActualClients( bool countSpectators, int *teamcount = NULL );
 	void			DropWeapon( int clientNum );
+	void			ChangeWeapon( int clientNum, int weapon );
 	void			MapRestart( void );
 	// called by idPlayer whenever it detects a team change (init or switch)
 	void			SwitchToTeam( int clientNum, int oldteam, int newteam );
@@ -241,6 +245,9 @@ public:
 	void			ServerClientConnect( int clientNum );
 
 	void			PlayerStats( int clientNum, char *data, const int len );
+
+	void			SelectWeapons( bool spawn );
+	void			PickupWeapon( int clientNum );
 
 private:
 	static const char	*MPGuis[];
@@ -285,8 +292,10 @@ private:
 	idUserInterface *scoreBoard;			// scoreboard
 	idUserInterface *spectateGui;			// spectate info
 	idUserInterface *guiChat;				// chat text
+	idUserInterface *guiWeapons;			// weapons selection    
 	idUserInterface *mainGui;				// ready / nick / votes etc.
 	idListGUI		*mapList;
+	idListGUI		*weaponList;
 	idUserInterface *msgmodeGui;			// message mode
 	int				currentMenu;			// 0 - none, 1 - mainGui, 2 - msgmodeGui
 	int				nextMenu;				// if 0, will do mainGui
@@ -350,6 +359,8 @@ private:
 	void			MessageMode( const idCmdArgs &args );
 	void			DisableMenu( void );
 	void			SetMapShot( void );
+	void			SetWeaponShot( void );
+	void			SelectSpawnWeapons( void );
 	// scores in TDM
 	void			TeamScore( int entityNumber, int team, int delta );
 	void			VoiceChat( const idCmdArgs &args, bool team );

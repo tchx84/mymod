@@ -108,8 +108,10 @@ idMultiplayerGame::idMultiplayerGame() {
 	scoreBoard = NULL;
 	spectateGui = NULL;
 	guiChat = NULL;
+    guiWeapons = NULL;
 	mainGui = NULL;
 	mapList = NULL;
+	weaponList = NULL;
 	msgmodeGui = NULL;
 	lastGameType = GAME_SP;
 	Clear();
@@ -164,13 +166,16 @@ idMultiplayerGame::Reset
 */
 void idMultiplayerGame::Reset() {
 	Clear();
-	assert( !scoreBoard && !spectateGui && !guiChat && !mainGui && !mapList );
+	assert( !scoreBoard && !spectateGui && !guiChat && !guiWeapons && !mainGui && !mapList && !weaponList );
 	scoreBoard = uiManager->FindGui( "guis/scoreboard.gui", true, false, true );
 	spectateGui = uiManager->FindGui( "guis/spectate.gui", true, false, true );
 	guiChat = uiManager->FindGui( "guis/chat.gui", true, false, true );
+	guiWeapons = uiManager->FindGui( "guis/weapons.gui", true, false, true );
 	mainGui = uiManager->FindGui( "guis/mpmain.gui", true, false, true );
 	mapList = uiManager->AllocListGUI( );
 	mapList->Config( mainGui, "mapList" );
+	weaponList = uiManager->AllocListGUI( );
+	weaponList->Config( guiWeapons, "weaponList" );
 	// set this GUI so that our Draw function is still called when it becomes the active/fullscreen GUI
 	mainGui->SetStateBool( "gameDraw", true );
 	mainGui->SetKeyBindingNames();
@@ -178,6 +183,10 @@ void idMultiplayerGame::Reset() {
 	SetMenuSkin();
 	msgmodeGui = uiManager->FindGui( "guis/mpmsgmode.gui", true, false, true );
 	msgmodeGui->SetStateBool( "gameDraw", true );
+
+	guiWeapons->SetStateBool( "gameDraw", true );
+	guiWeapons->SetStateInt( "spawn", 1 );
+
 	ClearGuis();
 	ClearChatData();
 	warmupEndTime = 0;
@@ -244,11 +253,16 @@ void idMultiplayerGame::Clear() {
 	scoreBoard = NULL;
 	spectateGui = NULL;
 	guiChat = NULL;
+	guiWeapons = NULL;
 	mainGui = NULL;
 	msgmodeGui = NULL;
 	if ( mapList ) {
 		uiManager->FreeListGUI( mapList );
 		mapList = NULL;
+	}
+	if ( weaponList ) {
+		uiManager->FreeListGUI( weaponList );
+		weaponList = NULL;
 	}
 	fragLimitTimeout = 0;
 	memset( &switchThrottle, 0, sizeof( switchThrottle ) );
@@ -1568,7 +1582,10 @@ idUserInterface* idMultiplayerGame::StartMenu( void ) {
 		msgmodeGui->Activate( true, gameLocal.time );
 		cvarSystem->SetCVarBool( "ui_chat", true );
 		return msgmodeGui;
-	}
+	} else if ( currentMenu == 3 ) {
+	    guiWeapons->Activate( true, gameLocal.time );
+		return guiWeapons;        
+    }
 	return NULL;
 }
 
@@ -1583,7 +1600,9 @@ void idMultiplayerGame::DisableMenu( void ) {
 		mainGui->Activate( false, gameLocal.time );
 	} else if ( currentMenu == 2 ) {
 		msgmodeGui->Activate( false, gameLocal.time );
-	}
+	} else if ( currentMenu == 3 ) {
+		guiWeapons->Activate( false, gameLocal.time );
+    }
 	currentMenu = 0;
 	nextMenu = 0;
 	cvarSystem->SetCVarBool( "ui_chat", false );
@@ -1607,6 +1626,50 @@ void idMultiplayerGame::SetMapShot( void ) {
 
 /*
 ================
+idMultiplayerGame::SetWeaponShot
+================
+*/
+void idMultiplayerGame::SetWeaponShot( void ) {
+    char shot[256];
+    int selection = weaponList->GetSelection( NULL, 0 );
+    const idDict *spawnArgs;
+
+    spawnArgs = gameLocal.FindEntityDefDict( "player_doommarine", false );
+
+    const char *weapon_classname = spawnArgs->GetString( va( "def_weapon%d", selection ) );
+
+    const idDict *w = gameLocal.FindEntityDefDict( weapon_classname, false );
+                
+    sprintf(shot,"gui/hud/%s",w->GetString( "inv_name" ));
+    guiWeapons->SetStateString( "current_weaponshot", w->GetString( "shot" ) );
+}
+
+/*
+================
+idMultiplayerGame::SelectSpawnWeapons
+================
+*/
+void idMultiplayerGame::SelectSpawnWeapons( void ) {
+	idCmdArgs args;
+    char weapon[3];
+    int selection = weaponList->GetSelection( NULL, 0 );
+
+    //hack for when you don't select any weapon
+    if (selection <= 0) {
+        selection = 2;
+    }
+
+	guiWeapons->SetStateInt( "spawn", 0 );
+
+    sprintf(weapon,"%d",selection);
+    args.AppendArg("clientChangeWeapon");
+    args.AppendArg(weapon);
+    ChangeWeapon_f(args);
+}
+
+
+/*
+================
 idMultiplayerGame::HandleGuiCommands
 ================
 */
@@ -1624,8 +1687,10 @@ const char* idMultiplayerGame::HandleGuiCommands( const char *_menuCommand ) {
 	assert( currentMenu );
 	if ( currentMenu == 1 ) {
 		currentGui = mainGui;
-	} else {
+	} else if ( currentMenu == 2 ){
 		currentGui = msgmodeGui;
+	} else if ( currentMenu == 3 ){
+		currentGui = guiWeapons;
 	}
 
 	args.TokenizeString( _menuCommand, false );
@@ -1809,6 +1874,53 @@ const char* idMultiplayerGame::HandleGuiCommands( const char *_menuCommand ) {
 		} else if (	!idStr::Icmp( cmd, "click_maplist" ) ) {
 			SetMapShot(	);
 			return "continue";
+		} else if (	!idStr::Icmp( cmd, "WeaponScan" ) ) {
+            int						i;
+            const char				*pos;
+            const char				*end;
+            int						len;
+            idStr					weaponString;
+            idItemInfo				info;
+            const idDict *spawnArgs;
+
+            spawnArgs = gameLocal.FindEntityDefDict( "player_doommarine", false );
+			weaponList->Clear();
+			weaponList->SetSelection( 0 );
+            const char *value = spawnArgs->GetString("primary_weapons");
+            common->Printf("value: %s\n",value);
+            for( pos = value; pos != NULL; pos = end ) {
+                end = strchr( pos, ',' );
+                if ( end ) {
+                    len = end - pos;
+                    end++;
+                } else {
+                    len = strlen( pos );
+                }
+
+                idStr weaponName( pos, 0, len );
+
+                // find the number of the matching weapon name
+                for( i = 0; i < MAX_WEAPONS; i++ ) {
+                    if ( weaponName == spawnArgs->GetString( va( "def_weapon%d", i ) ) ) {
+                        break;
+                    }
+                }
+
+                if ( i >= MAX_WEAPONS ) {
+                    gameLocal.Error( "Unknown weapon '%s'", weaponName.c_str() );
+                }
+                const idDict *w = gameLocal.FindEntityDefDict( weaponName, false );
+                
+                weaponList->Add( i, w->GetString( "inv_name" ) );
+            }
+			SetWeaponShot(	);
+            return "continue";
+        } else if (	!idStr::Icmp( cmd, "click_weaponList" ) ) {
+			SetWeaponShot(	);
+			return "continue";
+		} else if (	!idStr::Icmp( cmd, "SelectSpawnWeapons" ) ) {
+            SelectSpawnWeapons();
+            continue;
 		} else if ( strstr( cmd, "sound" ) == cmd ) {
 			// pass that back to the core, will know what to do with it
 			return _menuCommand;
@@ -1879,9 +1991,11 @@ bool idMultiplayerGame::Draw( int clientNum ) {
 		if ( currentMenu == 1 ) {
 			UpdateMainGui();
 			mainGui->Redraw( gameLocal.time );
-		} else {
+		} else if ( currentMenu == 2 ){
 			msgmodeGui->Redraw( gameLocal.time );
-		}
+		} else if ( currentMenu == 3 ){
+			guiWeapons->Redraw( gameLocal.time );
+		} 
 	} else {
 #if 0
 		// uncomment this if you want to track when players are in a menu
@@ -2093,6 +2207,54 @@ void idMultiplayerGame::DrawChat() {
 		guiChat->Redraw( gameLocal.time );
 	}
 }
+
+/*
+================
+idMultiplayerGame::SelectWeapons_f
+================
+*/
+void idMultiplayerGame::SelectWeapons_f( const idCmdArgs &args ) {
+	gameLocal.mpGame.SelectWeapons(false);
+}
+
+/*
+===============
+idMultiplayerGame::SelectWeapons
+===============
+*/
+void idMultiplayerGame::SelectWeapons(bool spawn) {
+    guiWeapons->SetStateInt( "spawn", spawn?1:0 );
+
+    nextMenu = 3;
+	gameLocal.sessionCommand = "game_startmenu";
+}
+
+/*
+================
+idMultiplayerGame::PickupWeapon_f
+================
+*/
+void idMultiplayerGame::PickupWeapon_f( const idCmdArgs &args ) {
+    idBitMsg	outMsg;
+    byte		msgBuf[128];
+    outMsg.Init( msgBuf, sizeof( msgBuf ) );
+    outMsg.WriteByte( GAME_RELIABLE_MESSAGE_PICKUPWEAPON );
+    networkSystem->ClientSendReliableMessage( outMsg );
+}
+
+/*
+===============
+idMultiplayerGame::PickupWeapon
+===============
+*/
+void idMultiplayerGame::PickupWeapon( int clientNum ) {
+	idEntity *ent = gameLocal.entities[ clientNum ];
+	if ( !ent || !ent->IsType( idPlayer::Type ) ) {
+		return;
+	}
+	static_cast< idPlayer* >( ent )->PickupWeapon( );
+}
+
 
 const int ASYNC_PLAYER_FRAG_BITS = -idMath::BitsForInteger( MP_PLAYER_MAXFRAGS - MP_PLAYER_MINFRAGS );	// player can have negative frags
 const int ASYNC_PLAYER_WINS_BITS = idMath::BitsForInteger( MP_PLAYER_MAXWINS );
@@ -2470,6 +2632,52 @@ void idMultiplayerGame::DropWeapon_f( const idCmdArgs &args ) {
 	outMsg.WriteByte( GAME_RELIABLE_MESSAGE_DROPWEAPON );
 	networkSystem->ClientSendReliableMessage( outMsg );
 }
+
+/*
+================
+idMultiplayerGame::ChangeWeapon
+================
+*/
+void idMultiplayerGame::ChangeWeapon( int clientNum, int weapon ) {
+	assert( !gameLocal.isClient );
+	idEntity *ent = gameLocal.entities[ clientNum ];
+	if ( !ent || !ent->IsType( idPlayer::Type ) ) {
+		return;
+	}
+
+    idPlayer* player = static_cast< idPlayer* >( ent );
+
+    if( player->primary_weapon == -1 ){
+        const char *weapon_classname = player->spawnArgs.GetString( va( "def_weapon%d", weapon ) );
+        player->Give( "weapon", weapon_classname );
+
+        ammo_t ammo_i = player->inventory.AmmoIndexForWeaponClass( weapon_classname, NULL );
+        const char	*name = idWeapon::GetAmmoNameForNum( ( ammo_t )ammo_i );
+        player->inventory.ammo[ ammo_i ] = player->spawnArgs.GetInt( name );
+        
+        player->SelectWeapon(weapon,true);
+    }
+    player->primary_weapon = weapon;
+}
+
+/*
+================
+idMultiplayerGame::ChangeWeapon_f
+================
+*/
+void idMultiplayerGame::ChangeWeapon_f( const idCmdArgs &args ) {
+	if ( !gameLocal.isMultiplayer ) {
+		common->Printf( "clientChangeWeapon: only valid in multiplayer\n" );
+		return;
+	}
+	idBitMsg	outMsg;
+	byte		msgBuf[128];
+	outMsg.Init( msgBuf, sizeof( msgBuf ) );
+	outMsg.WriteByte( GAME_RELIABLE_MESSAGE_CHANGEWEAPON );
+	outMsg.WriteInt( atoi(args.Argv(1)) );
+	networkSystem->ClientSendReliableMessage( outMsg );
+}
+
 
 /*
 ================

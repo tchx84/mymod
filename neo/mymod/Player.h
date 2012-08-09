@@ -189,6 +189,8 @@ public:
 
 	void					UpdateArmor( void );
 
+    int                     CountWeapons( void );
+
 	int						nextItemPickup;
 	int						nextItemNum;
 	int						onePickupTime;
@@ -270,6 +272,7 @@ public:
 	int						weapon_soulcube;
 	int						weapon_pda;
 	int						weapon_fists;
+	int						primary_weapon;
 
 	int						heartRate;
 	idInterpolate<float>	heartInfo;
@@ -329,6 +332,7 @@ public:
 
 	idDragEntity			dragEntity;
 
+    idItem                  *weaponTouching;
 public:
 	CLASS_PROTOTYPE( idPlayer );
 
@@ -448,6 +452,9 @@ public:
 	void					WeaponRisingCallback( void );
 	void					RemoveWeapon( const char *weap );
 	bool					CanShowWeaponViewmodel( void ) const;
+	void					TouchWeapon( idItem *weapon );
+	bool					CanPickupWeapon( void );
+	void					PickupWeapon( void );
 
 	void					ToggleIronSight ( void );
 	bool					HasIronSight ( void ) const;
