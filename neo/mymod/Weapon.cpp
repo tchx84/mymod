@@ -404,6 +404,7 @@ void idWeapon::Restore( idRestoreGame *savefile ) {
 	WEAPON_NETFIRING.LinkTo(	scriptObject, "WEAPON_NETFIRING" );
 	WEAPON_RAISEWEAPON.LinkTo(	scriptObject, "WEAPON_RAISEWEAPON" );
 	WEAPON_LOWERWEAPON.LinkTo(	scriptObject, "WEAPON_LOWERWEAPON" );
+	WEAPON_IRONSIGHT.LinkTo(	scriptObject, "WEAPON_IRONSIGHT" );
 
 	savefile->ReadObject( reinterpret_cast<idClass *&>( owner ) );
 	worldModel.Restore( savefile );
@@ -561,6 +562,7 @@ void idWeapon::Clear( void ) {
 	WEAPON_NETFIRING.Unlink();
 	WEAPON_RAISEWEAPON.Unlink();
 	WEAPON_LOWERWEAPON.Unlink();
+	WEAPON_IRONSIGHT.Unlink();
 
 	if ( muzzleFlashHandle != -1 ) {
 		gameRenderWorld->FreeLightDef( muzzleFlashHandle );
@@ -1012,6 +1014,7 @@ void idWeapon::GetWeaponDef( const char *objectname, int ammoinclip ) {
 	WEAPON_NETFIRING.LinkTo(	scriptObject, "WEAPON_NETFIRING" );
 	WEAPON_RAISEWEAPON.LinkTo(	scriptObject, "WEAPON_RAISEWEAPON" );
 	WEAPON_LOWERWEAPON.LinkTo(	scriptObject, "WEAPON_LOWERWEAPON" );
+	WEAPON_IRONSIGHT.LinkTo(	scriptObject, "WEAPON_IRONSIGHT" );
 
 	spawnArgs = weaponDef->dict;
 
@@ -2019,6 +2022,15 @@ void idWeapon::PresentWeapon( bool showViewModel ) {
 
 /*
 ================
+idWeapon::SetIronSight
+================
+*/
+void idWeapon::SetIronSight( bool hasIronSight ) {
+    WEAPON_IRONSIGHT = hasIronSight;
+}
+
+/*
+================
 idWeapon::EnterCinematic
 ================
 */
@@ -2036,6 +2048,7 @@ void idWeapon::EnterCinematic( void ) {
 		WEAPON_NETFIRING	= false;
 		WEAPON_RAISEWEAPON	= false;
 		WEAPON_LOWERWEAPON	= false;
+		WEAPON_IRONSIGHT	= false;
 	}
 
 	disabled = true;

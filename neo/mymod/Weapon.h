@@ -122,6 +122,7 @@ public:
 	virtual void			DeconstructScriptObject( void );
 	void					SetState( const char *statename, int blendFrames );
 	void					UpdateScript( void );
+    void                    SetIronSight( bool hasIronSight );
 	void					EnterCinematic( void );
 	void					ExitCinematic( void );
 	void					NetCatchup( void );
@@ -170,6 +171,7 @@ private:
 	idScriptBool			WEAPON_NETFIRING;
 	idScriptBool			WEAPON_RAISEWEAPON;
 	idScriptBool			WEAPON_LOWERWEAPON;
+	idScriptBool			WEAPON_IRONSIGHT;
 	weaponStatus_t			status;
 	idThread *				thread;
 	idStr					state;

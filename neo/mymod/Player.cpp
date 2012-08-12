@@ -1038,6 +1038,7 @@ idPlayer::idPlayer() {
 	weapon_pda				= -1;
 	weapon_fists			= -1;
 	showWeaponViewModel		= true;
+    hasIronSight             = false;
 
 	skin					= NULL;
 	powerUpSkin				= NULL;
@@ -1217,6 +1218,7 @@ void idPlayer::Init( void ) {
 	weapon_pda				= SlotForWeapon( "weapon_pda" );
 	weapon_fists			= SlotForWeapon( "weapon_fists" );
 	showWeaponViewModel		= GetUserInfo()->GetBool( "ui_showGun" );
+    hasIronSight                = false;
 
 
 	lastDmgTime				= 0;
@@ -1735,6 +1737,7 @@ void idPlayer::Save( idSaveGame *savefile ) const {
 	savefile->WriteInt( weaponSwitchTime );
 	savefile->WriteBool( weaponEnabled );
 	savefile->WriteBool( showWeaponViewModel );
+	savefile->WriteBool( hasIronSight );
 
 	savefile->WriteSkin( skin );
 	savefile->WriteSkin( powerUpSkin );
@@ -1967,6 +1970,7 @@ void idPlayer::Restore( idRestoreGame *savefile ) {
 	savefile->ReadInt( weaponSwitchTime );
 	savefile->ReadBool( weaponEnabled );
 	savefile->ReadBool( showWeaponViewModel );
+	savefile->ReadBool( hasIronSight );
 
 	savefile->ReadSkin( skin );
 	savefile->ReadSkin( powerUpSkin );
@@ -2631,7 +2635,7 @@ void idPlayer::DrawHUD( idUserInterface *_hud ) {
 
 	// weapon targeting crosshair
 	if ( !GuiActive() ) {
-		if ( cursor && weapon.GetEntity()->ShowCrosshair() ) {
+		if ( cursor && weapon.GetEntity()->ShowCrosshair() && !hasIronSight) {
 			cursor->Redraw( gameLocal.realClientTime );
 		}
 	}
@@ -5634,6 +5638,10 @@ void idPlayer::PerformImpulse( int impulse ) {
 			}
 			break;
 		}
+		case IMPULSE_21: {
+			ToggleIronSight();
+			break;
+		}
 		case IMPULSE_22: {
 			if ( gameLocal.isClient || entityNumber == gameLocal.localClientNum ) {
 				gameLocal.mpGame.ToggleSpectate();
@@ -5783,6 +5791,11 @@ void idPlayer::AdjustSpeed( void ) {
     // speed modifier
     if ( weapon.GetEntity() ) {
         speed *= weapon.GetEntity()->SpeedModifier();
+    }
+
+    // iron sight modifier
+    if ( hasIronSight ){
+        speed *= 0.45f;
     }
 
 	physicsObj.SetSpeed( speed, pm_crouchspeed.GetFloat(), pm_pronespeed.GetFloat() );
@@ -6312,13 +6325,11 @@ void idPlayer::Think( void ) {
 		centerView.Init( gameLocal.time, 200, viewAngles.pitch, 0 );
 	}
 
-	// zooming
-	if ( ( usercmd.buttons ^ oldCmd.buttons ) & BUTTON_ZOOM ) {
-		if ( ( usercmd.buttons & BUTTON_ZOOM ) && weapon.GetEntity() ) {
-			zoomFov.Init( gameLocal.time, 200.0f, CalcFov( false ), weapon.GetEntity()->GetZoomFov() );
-		} else {
-			zoomFov.Init( gameLocal.time, 200.0f, zoomFov.GetCurrentValue( gameLocal.time ), DefaultFov() );
-		}
+	// handle iron sight
+	if ( hasIronSight ) {
+	    zoomFov.Init( gameLocal.time, 200.0f, CalcFov( false ), weapon.GetEntity()->GetZoomFov() );
+    } else {
+	    zoomFov.Init( gameLocal.time, 200.0f, zoomFov.GetCurrentValue( gameLocal.time ), DefaultFov() );
 	}
 
 	// if we have an active gui, we will unrotate the view angles as
@@ -7162,8 +7173,13 @@ void idPlayer::CalculateViewWeaponPos( idVec3 &origin, idMat3 &axis ) {
 	// these cvars are just for hand tweaking before moving a value to the weapon def
 	idVec3	gunpos( g_gun_x.GetFloat(), g_gun_y.GetFloat(), g_gun_z.GetFloat() );
 
-	// as the player changes direction, the gun will take a small lag
-	idVec3	gunOfs = GunAcceleratingOffset();
+	// as the player changes direction, the gun will take a small lag, if no ironsight
+	idVec3	gunOfs;
+    if ( !hasIronSight ) {
+        gunOfs = GunAcceleratingOffset();
+    } else {
+        gunOfs.Zero();
+    }
 	origin = viewOrigin + ( gunpos + gunOfs ) * viewAxis;
 
 	// on odd legs, invert some angles
@@ -7173,10 +7189,14 @@ void idPlayer::CalculateViewWeaponPos( idVec3 &origin, idMat3 &axis ) {
 		scale = xyspeed;
 	}
 
-	// gun angles from bobbing
-	angles.roll		= scale * bobfracsin * 0.005f;
-	angles.yaw		= scale * bobfracsin * 0.01f;
-	angles.pitch	= xyspeed * bobfracsin * 0.005f;
+	// gun angles from bobbing, if no ironsight
+    if ( !hasIronSight ) {
+	    angles.roll		= scale * bobfracsin * 0.005f;
+	    angles.yaw		= scale * bobfracsin * 0.01f;
+	    angles.pitch	= xyspeed * bobfracsin * 0.005f;
+    } else {
+        angles.Zero();
+    }
 
 	// gun angles from turning
 	if ( gameLocal.isMultiplayer ) {
@@ -8488,6 +8508,31 @@ idPlayer::CanShowWeaponViewmodel
 */
 bool idPlayer::CanShowWeaponViewmodel( void ) const {
 	return showWeaponViewModel;
+}
+
+/*
+===============
+idPlayer::ToggleIronSight
+===============
+*/
+void idPlayer::ToggleIronSight( void ) {
+    bool hasWeapon;
+
+    hasWeapon = ( weapon.GetEntity() != NULL );
+    hasIronSight = ( hasWeapon && !hasIronSight );
+    
+    if ( hasWeapon ){
+        weapon.GetEntity()->SetIronSight( hasIronSight );
+    }
+}
+
+/*
+===============
+idPlayer::HasIronSight
+===============
+*/
+bool idPlayer::HasIronSight( void ) const {
+	return hasIronSight;
 }
 
 /*

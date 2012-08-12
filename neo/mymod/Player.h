@@ -449,6 +449,9 @@ public:
 	void					RemoveWeapon( const char *weap );
 	bool					CanShowWeaponViewmodel( void ) const;
 
+	void					ToggleIronSight ( void );
+	bool					HasIronSight ( void ) const;
+
 	void					AddAIKill( void );
 	void					SetSoulCubeProjectile( idProjectile *projectile );
 
@@ -558,6 +561,7 @@ private:
 	int						weaponSwitchTime;
 	bool					weaponEnabled;
 	bool					showWeaponViewModel;
+    bool                    hasIronSight;
 
 	const idDeclSkin *		skin;
 	const idDeclSkin *		powerUpSkin;

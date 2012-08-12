@@ -354,6 +354,12 @@ void idPlayerView::WeaponFireFeedback( const idDict *weaponDef ) {
         idAngles angles;
 		
 		weaponDef->GetAngles( "recoilAngles", "5 0 0", angles );
+
+        // lower the recoil when using iron sight
+        if ( player->HasIronSight() ){
+            angles *= 0.40f;
+        }
+
         kickAngles += angles;
 }
 
