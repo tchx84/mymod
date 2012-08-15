@@ -5,8 +5,8 @@
 (e) Add prone standing state. [DONE / missing animations ]
 (f) Add knife weapon.
 (g) Add climbing movement. [DONE / missing animations ]
-(h) Add bullseye view.
+(h) Add Iron Sight. [DONE / missing animations ] 
 (i) Add lean (both sides) movement.
 (j) Adjust stamina control. Relates to (b) and (d). [DONE]
 (k) Add weapon selection system.
-(l) Add recoil to weapons. Relates to (h)
+(l) Add recoil to weapons. Relates to (h) [DONE]
